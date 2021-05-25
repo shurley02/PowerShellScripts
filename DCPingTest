@@ -1,0 +1,79 @@
+#------------------------------------------------------------------------------  
+#  
+# PowerShell Source Code  
+#  
+# NAME:  
+#    DCPingTest.ps1 
+#  
+# VERSION:
+#    1.0 (3-26-2020): Sean Hurley
+#    1.1 (3-26-2020): Added a sort command to sort all output based on latency 
+#			from lowest to highest.; Sean Hurley
+#    1.2 (4-21-2020): Changed default behavior to print report
+#			Added running computer sitename to name of file
+#
+# Author: Sean Hurley (sean.c.hurley@disney.com)
+#         
+# Usage:  DCPingTest.ps1 (Will search current forest)
+#		      DCPingTest.ps1 -targetforest <domain name> (Will search specific trusting forest)
+#		      DCPingTest.ps1 -noreport (-targetforest) (Will not write the report file only show on screen)
+#
+# Description: This script when run with a user context in an active directory
+# domain will  ping all DC's for all domains in the forest and report latency, sitename, IPaddress
+#------------------------------------------------------------------------------  
+[cmdletbinding()]            
+param
+(
+    [Parameter(Mandatory=$false)][alias('forest')][string]$targetforest,
+    [switch]$noreport
+)    
+
+ $script:report = @()
+ 
+ If (!$targetforest)     
+    {        
+	$forest = [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest()   
+    }      
+Else     
+    {        
+    $forestContext = New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext("forest", $targetforest) 
+	$forest = ([System.DirectoryServices.ActiveDirectory.Forest]::GetForest($forestContext)) 
+    }        
+   
+
+$domains = $forest.domains 
+$domaincount = $domains.count
+$domaincounter = 1
+ForEach ($domain in $domains) {
+	write-progress -id 1 -activity "Checking Domain $domain...." -percentcomplete (($domaincounter / $domaincount)*100) -status "Domain $domaincounter in $domaincount total..."
+	$DCs = $domain.domaincontrollers
+	$DCcount = $dcs.count
+	$dccounter = 1
+	ForEach($dc in $DCs) {
+		write-progress -id 2 -activity "Test DC $dc...." -percentcomplete (($dccounter / $dccount)*100)
+		$obj = New-Object PSObject
+		try 
+		{
+			$testresult = Test-Connection -ComputerName $dc.name -BufferSize 16 -Count 1  -EA stop
+			$obj | Add-Member NoteProperty 'Source'($testresult.PSComputerName)
+			$obj | Add-Member NoteProperty 'Destination'($testresult.Address)
+			$obj | Add-Member NoteProperty 'DestinationIP' ($testresult.ProtocolAddress)
+			$obj | Add-Member NoteProperty 'Latency' ($testresult.ResponseTime)
+			$obj | Add-Member NoteProperty 'SiteName' ($dc.sitename)
+			$script:report += @($obj)
+			}
+		Catch [system.exception]
+			{
+			$obj | Add-Member NoteProperty 'error' ($error[0].tostring())
+			}
+		$dccounter ++
+	 }
+	 write-progress -id 2 -activity "Blash!" -complete
+	 $domaincounter ++
+}
+if($noreport){ $script:report | sort {[int]$_.latency} | ft}
+Else{
+$date=(Get-Date -uformat "%m-%d-%Y-%H-%M")
+$site = $a = (nltest /dsgetsite)[0]
+	$script:report | sort {[int]$_.latency} | Export-CSV pingreport-$env:computername-$site-$date.csv -NoTypeInformation
+}
