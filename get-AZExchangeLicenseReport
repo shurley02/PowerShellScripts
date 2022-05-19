@@ -1,0 +1,51 @@
+Param
+(
+[string] $csvpath
+)
+$listOfUsers=import-csv $csvpath
+
+foreach ($user in $listofUsers)
+{
+	$smtp=$user.smtp
+	$msoluser=get-msoluser -UserPrincipalName $smtp
+	$msoluser
+	if ($msoluser.IsLicensed -eq $true) 
+	{
+		$isLicensed=$true
+		$SKUID=$msoluser.Licenses.AccountSkuId
+		$SKUID
+		write-host "User $smtp is already licensed for $SKUID" -foregroundcolor yellow
+		
+		
+		if ($SKUID -like "*STANDARDPACK")
+		{
+       		foreach ($plan in $msoluser.licenses.servicestatus) 
+       		{
+        		if ($plan.serviceplan.ServiceName -eq "EXCHANGE_S_STANDARD" -and $plan.provisioningstatus -eq "Success")  
+        		{
+        			write-host "User has already Exchange Online license" -foregroundcolor yellow
+        		}
+				else
+				{
+					Write-Host "User needs an Exchange Online License" - foregroundcolor Red
+				}
+			}
+		}
+
+		if ($SKUID -like "*ENTERPRISEPACK") 
+		{
+			foreach ($plan in $msoluser.licenses.servicestatus) 
+			{
+        		if ($plan.serviceplan.ServiceName -eq "EXCHANGE_S_Enterprise" -and $plan.provisioningstatus -eq "Success")
+        		{
+        			write-host "User has already Exchange Online license" -foregroundcolor yellow
+        		}
+				else
+				{
+					Write-Host "User needs an Exchange Online LIcense" - foregroundcolor Red
+				}
+			}
+		}
+	}
+}
+
