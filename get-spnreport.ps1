@@ -83,7 +83,7 @@ else{
 	
 
 
-function getspns ($domaainDN){
+function getspns ($domainDN){
 	Write-Progress -id 2 -Activity "Searching Domain for SPN's"
 	$search = New-Object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$domaindn")
 	$search.filter = "(&(servicePrincipalName=*)(objectcategory=CN=Person,$schema))"
