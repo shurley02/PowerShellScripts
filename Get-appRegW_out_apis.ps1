@@ -1,36 +1,48 @@
-$appRegistrations = Get-AzureADApplication -All $true   
+# Ensure the AzureAD module is installed and imported
+Import-Module AzureAD
 
-# Initialize an empty array to store the results
-$results = @()
+# Connect to Azure AD if not already connected
+if (-not (Get-AzureADTenantDetail -ErrorAction SilentlyContinue)) {
+    Connect-AzureAD
+}
 
-# Get the total number of application registrations for progress bar
-$totalApps = $appRegistrations.Count
-
-# Initialize a counter for progress tracking
+# Retrieve all enterprise applications
+$apps = Get-AzureADServicePrincipal -All $true
+$total = $apps.Count
 $counter = 0
 
-# Loop through each application registration
-foreach ($app in $appRegistrations) {
-    # Increment the counter
+# Initialize an array to store results
+$enterpriseApps = @()
+
+foreach ($app in $apps) {
     $counter++
+    
+    # Retrieve owners of the application with error handling
+    try {
+        $owners = Get-AzureADServicePrincipalOwner -ObjectId $app.ObjectId -ErrorAction Stop | Select-Object DisplayName, UserPrincipalName
+    } catch {
+        $owners = @()
+    }
+    
+    $ownerNames = if ($owners) { $owners.DisplayName -join ", " } else { "No Owners" }
+    $ownerEmails = if ($owners) { $owners.UserPrincipalName -join ", " } else { "No Emails" }
+    
+    # Store app details in an object
+    $appDetails = [PSCustomObject]@{
+        Name     = $app.DisplayName
+        Owner    = $ownerNames
+        OwnerEmail = $ownerEmails
+        AppId    = $app.AppId
+        ObjectId = $app.ObjectId
+    }
+    
+    # Add to results array
+    $enterpriseApps += $appDetails
+    
+    # Update progress bar
+    $percentComplete = [math]::Round(($counter / $total) * 100, 2)
+    Write-Progress -Activity "Retrieving Enterprise Applications" -Status "Processing $counter of $total" -PercentComplete $percentComplete
+}
 
-    # Display the progress bar
-    Write-Progress -Activity "Processing Application Registrations" -Status "Processing $counter out of $totalApps" -PercentComplete (($counter / $totalApps) * 100)
-
-    # Get the owners of the application
-    $owners = Get-AzureADApplicationOwner -ObjectId $app.ObjectId
-
-    # Filter applications that have no API permissions
-    if ($app.RequiredResourceAccess.Count -eq 0) {
-         # Create a custom object to store the application details and owners
-         $appDetails = [PSCustomObject]@{
-             ObjectId             = $app.ObjectId
-             DisplayName          = $app.DisplayName
-             RequiredResourceAccess = $app.RequiredResourceAccess
-             CreatedDateTime      = $app.CreatedDateTime
-             Owners               = ($owners | Select-Object -ExpandProperty DisplayName) -join ", "
-         }
-         # Add the custom object to the results array
-         $results += $appDetails
-     }
- }
+# Output the collected data
+$enterpriseApps
