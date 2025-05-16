@@ -1,0 +1,71 @@
+# Load ImportExcel
+Import-Module ImportExcel
+
+# Get all GPOs
+$gpos = Get-GPO -All
+$totalGPOs = $gpos.Count
+
+# Prepare collection for results
+$gpoLinks = @()
+
+# Loop through each GPO with progress
+for ($i = 0; $i -lt $totalGPOs; $i++) {
+    $gpo = $gpos[$i]
+
+    # Update progress bar
+    Write-Progress -Activity "Collecting GPO Links" `
+                   -Status "Processing: $($gpo.DisplayName)" `
+                   -PercentComplete (($i / $totalGPOs) * 100)
+
+    try {
+        # Get XML report for the GPO
+        $gpoReportXml = Get-GPOReport -Guid $gpo.Id -ReportType Xml -ErrorAction Stop
+        $xml = [xml]$gpoReportXml
+
+        # Find linked locations if present
+        if ($xml.GPO.LinksTo) {
+            foreach ($link in $xml.GPO.LinksTo) {
+                $gpoLinks += [PSCustomObject]@{
+                    GPOName      = $gpo.DisplayName
+                    GPOId        = $gpo.Id
+                    LinkLocation = $link.SOMPath
+                    Enforced     = if ($link.NoOverride -eq 'true') { $true } else { $false }
+                    Enabled      = if ($link.Enabled -eq 'true') { $true } else { $false }
+                }
+            }
+        } else {
+            # No links found - report as unlinked
+            $gpoLinks += [PSCustomObject]@{
+                GPOName      = $gpo.DisplayName
+                GPOId        = $gpo.Id
+                LinkLocation = 'Not Linked'
+                Enforced     = $null
+                Enabled      = $null
+            }
+        }
+    } catch {
+        Write-Warning "Error processing $($gpo.DisplayName): $_"
+    }
+}
+
+# Complete progress bar
+Write-Progress -Activity "Collecting GPO Links" -Completed
+
+# Group by GPO and combine links with line breaks
+$groupedResults = $gpoLinks | Group-Object GPOName | ForEach-Object {
+    $gpo = $_.Group[0]
+    [PSCustomObject]@{
+        GPOName      = $gpo.GPOName
+        GPOId        = $gpo.GPOId
+        LinkedTo     = ($_.Group | ForEach-Object { $_.LinkLocation }) -join "`n"
+        Enforced     = ($_.Group | Where-Object { $_.Enforced -eq $true }).Count -gt 0
+        Enabled      = ($_.Group | Where-Object { $_.Enabled -eq $true }).Count -gt 0
+    }
+}
+
+# Export to nicely formatted Excel file with wrapped text
+$excelPath = "$env:USERPROFILE\Desktop\GPO_Link_Report.xlsx"
+
+$groupedResults | Export-Excel -Path $excelPath -AutoSize -WrapText -Title "GPO Link Report" -TableName "GPOLinks"
+
+Write-Host "Excel report saved to: $excelPath"
