@@ -72,5 +72,5 @@ if($reportvalid){
 else{
 	#$ExpiringAppCredentials = $appWithCredentials #| ? { $_.Status -eq 'Expired' -or $_.Status -eq 'ExpiringSoon' -or $_.Status -eq 'ExpirationTooLong'} | Sort-Object -Property DisplayName
 	#$appWithoutCredentials | export-csv c:\users\3hurls018\desktop\nocreds.csv
-	$appWithCredentials | Select * | export-csv c:\users\3hurls018\desktop\AppCredentialReport-$date.csv
+	$appWithCredentials | Select * | export-csv c:\users\shurley02\desktop\AppCredentialReport-$date.csv
 }
