@@ -8,7 +8,7 @@
 # VERSION:
 #    1.0
 #
-# Author: Sean Hurley (sean.c.hurley@disney.com)
+# Author: Sean Hurley (sean.hurley@bigskyitgroup.com)
 #         
 # Usage: 
 #
