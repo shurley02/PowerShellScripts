@@ -67,10 +67,10 @@ $date=(Get-Date -uformat "%m-%d-%Y-%H-%M")
 
 if($reportvalid){
 	$validAppCredentials = $appWithCredentials | ? { $_.Status -eq 'valid'} | Sort-Object -Property DisplayName
-	$validAppCredentials | export-csv c:\users\shurley\desktop\validreport.csv
+	$validAppCredentials | export-csv ./validreport.csv
 	}
 else{
 	#$ExpiringAppCredentials = $appWithCredentials #| ? { $_.Status -eq 'Expired' -or $_.Status -eq 'ExpiringSoon' -or $_.Status -eq 'ExpirationTooLong'} | Sort-Object -Property DisplayName
-	#$appWithoutCredentials | export-csv c:\users\3hurls018\desktop\nocreds.csv
-	$appWithCredentials | Select * | export-csv c:\users\shurley02\desktop\AppCredentialReport-$date.csv
+	#$appWithoutCredentials | export-csv ./nocreds.csv
+	$appWithCredentials | Select * | export-csv ./AppCredentialReport-$date.csv
 }
