@@ -15,7 +15,7 @@
 #    1.0
 #	 5/17/2019
 #
-# Author: Sean Hurley (sean.c.hurley@disney.com)
+# Author: Sean Hurley (sean.hurley@bigskyitgroup.com)
 #         
 # Usage: get-SPNReport.ps1 -targetforest <forest name> (Can search any trusting forest)
 #		 get-SPNReport.ps1 -targetdomain <domain name> (Will search specific trusting domain)
