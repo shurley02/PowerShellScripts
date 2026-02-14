@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-Flip primary SMTP from @intermedccs.com to @intercareins.com ONLY where the current
-PrimarySmtpAddress ends with @intermedccs.com.
+Flip primary SMTP from @domaina to @domainb ONLY where the current
+PrimarySmtpAddress ends with @domaina.
 
 - Works for Remote Mailboxes (EXO) and, optionally, on-prem Mailboxes.
 - Keeps same local-part. Old primary is demoted to alias; all other proxies preserved.
