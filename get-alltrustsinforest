@@ -1,0 +1,24 @@
+$forest = Get-ADForest
+foreach ($d in $forest.Domains) {
+    try {
+        Get-ADTrust -Filter * -Server $d | ForEach-Object {
+            $kind = switch ($true) {
+                ($_.IntraForest)          { if ($_.IsTreeRoot) {'Tree-Root'} elseif ($_.DisallowTransivity) {'Shortcut'} else {'Parent-Child'} }
+                ($_.ForestTransitive)     { 'Forest' }
+                ($_.TrustType -eq 'MIT')  { 'Realm (MIT)' }
+                default                   { 'External (Domain)' }
+            }
+            [pscustomobject]@{
+                SourceDomain = $d
+                Target       = $_.Name
+                Kind         = $kind
+                Direction    = $_.Direction
+                SIDFilter    = $_.SIDFilteringQuarantined
+                SelAuth      = $_.SelectiveAuthentication
+                Attr         = '0x{0:X}' -f $_.TrustAttributes
+            }
+        }
+    } catch {
+        [pscustomobject]@{ SourceDomain = $d; Target = 'QUERY FAILED'; Kind = $_.Exception.Message }
+    }
+}
