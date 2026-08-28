@@ -1,0 +1,34 @@
+$Domains = Get-MgDomain -All
+
+# Get users
+$Users = Get-MgUser -All -Property UserPrincipalName
+
+# Count users by UPN suffix
+$UserCounts = $Users |
+    Where-Object { $_.UserPrincipalName -match '@' } |
+    Group-Object {
+        ($_.UserPrincipalName -split '@')[-1].ToLower()
+    }
+
+# Build lookup table
+$CountLookup = @{}
+
+foreach ($Group in $UserCounts) {
+    $CountLookup[$Group.Name] = $Group.Count
+}
+
+# Create final report
+$Domains |
+    ForEach-Object {
+        [PSCustomObject]@{
+            Domain    = $_.Id.ToLower()
+            UserCount = if ($CountLookup.ContainsKey($_.Id.ToLower())) {
+                $CountLookup[$_.Id.ToLower()]
+            }
+            else {
+                0
+            }
+        }
+    } |
+    Sort-Object UserCount -Descending |
+    Format-Table -AutoSize
